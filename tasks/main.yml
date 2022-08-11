@@ -25,6 +25,16 @@
     name: prometheus-community
     repo_url: https://prometheus-community.github.io/helm-charts
 
+#- set_fact:
+#    targets: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}'}}
+#  loop: "{{ hostvars | dict2items }}"
+#  register: target_list
+
+- set_fact:
+    targets: { targets: ['{{ item }}']}
+  loop: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | list | product([':9100']) | map('join') }}"
+  register: target_list
+
 - name: Deploy prometheus
   kubernetes.core.helm:
     kubeconfig: /etc/rancher/k3s/k3s.yaml
@@ -42,5 +52,4 @@
           additionalScrapeConfigs:
             - job_name: "sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
               metrics_path: "/metrics"
-              static_configs:
-                - targets: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | list | product([':9100']) | map('join') | list }}"
+              static_configs: "{{ target_list.results | map(attribute='ansible_facts.targets') | list }}"
