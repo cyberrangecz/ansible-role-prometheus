@@ -1,39 +1,19 @@
 ---
 
-- name: Install k3s
-  shell: curl -sfL https://get.k3s.io | sh -s -
-  args:
-    creates: /etc/rancher/k3s/k3s.yaml
-  register: result
-  until: "result is not failed"
-  retries: 10
-  delay: 10
-
-- name: Install apt packages
-  apt:
-    name:
-      - python3-yaml
-    update_cache: yes
-
-- name: Install helm
-  shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-  args:
-    creates: /usr/local/bin/helm
-
 - name: Add Prometheus Helm charts repository
   kubernetes.core.helm_repository:
     name: prometheus-community
     repo_url: https://prometheus-community.github.io/helm-charts
 
-#- set_fact:
-#    targets: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}'}}
-#  loop: "{{ hostvars | dict2items }}"
-#  register: target_list
-
 - set_fact:
-    targets: { targets: ['{{ item }}']}
-  loop: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | list | product([':9100']) | map('join') }}"
+    targets: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}'}}
+  loop: "{{ hostvars | dict2items }}"
   register: target_list
+
+#- set_fact:
+#    targets: { targets: ['{{ item }}']}
+#  loop: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | list | product([':9100']) | map('join') }}"
+#  register: target_list
 
 - name: Deploy prometheus
   kubernetes.core.helm:
