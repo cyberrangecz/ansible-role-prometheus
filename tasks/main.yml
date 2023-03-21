@@ -15,11 +15,6 @@
   loop: "{{ hostvars | dict2items }}"
   register: target_list_icmp
 
-#- set_fact:
-#    targets: { targets: ['{{ item }}']}
-#  loop: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | list | product([':9100']) | map('join') }}"
-#  register: target_list
-
 - name: Deploy prometheus
   kubernetes.core.helm:
     kubeconfig: /etc/rancher/k3s/k3s.yaml
