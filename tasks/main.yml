@@ -6,12 +6,12 @@
     repo_url: https://prometheus-community.github.io/helm-charts
 
 - set_fact:
-    targets: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}'}}
+    targets: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
   loop: "{{ hostvars | dict2items }}"
   register: target_list
 
 - set_fact:
-    targets_icmp: { targets: ['{{ item.value.ansible_host }}'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}'}}
+    targets_icmp: { targets: ['{{ item.value.ansible_host }}'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
   loop: "{{ hostvars | dict2items }}"
   register: target_list_icmp
 
