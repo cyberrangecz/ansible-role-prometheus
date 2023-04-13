@@ -46,5 +46,7 @@
                   target_label: __param_target
                 - target_label: __address__
                   replacement: prometheus-blackbox-exporter:9115
+  register: result
   retries: 5
   delay: 10
+  until: result is not failed
