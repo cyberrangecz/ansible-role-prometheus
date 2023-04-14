@@ -5,15 +5,35 @@
     name: prometheus-community
     repo_url: https://prometheus-community.github.io/helm-charts
 
-- set_fact:
+- name: Create a list of targets with node-exporter
+  set_fact:
     targets: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
   loop: "{{ hostvars | dict2items }}"
   register: target_list
 
-- set_fact:
+- name: Create a list of targets for icmp monitoring from all hosts
+  set_fact:
     targets_icmp: { targets: ['{{ item.value.ansible_host }}'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
   loop: "{{ hostvars | dict2items }}"
-  register: target_list_icmp
+  register: target_list_icmp_all
+  when: (groups["monitor-icmp"] is defined) and (groups["monitor-icmp"]|length == 0)
+
+- name: Create a list of targets for icmp monitoring from monitor-icmp group
+  set_fact:
+    targets_icmp: { targets: ['{{ hostvars[item]["ansible_host"] }}'], labels: { instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}', sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'}}
+  loop: "{{ groups['monitor-icmp'] }}"
+  register: target_list_icmp_group
+  when: (groups["monitor-icmp"] is defined) and (groups["monitor-icmp"]|length>0)
+
+- name: Set target_list_icmp_all to target_list_icmp
+  set_fact:
+    target_list_icmp: "{{ target_list_icmp_all }}"
+  when: target_list_icmp_all.results
+
+- name: Set target_list_icmp_group to target_list_icmp
+  set_fact:
+    target_list_icmp: "{{ target_list_icmp_group }}"
+  when: target_list_icmp_group.results
 
 - name: Deploy prometheus
   kubernetes.core.helm:
@@ -40,7 +60,7 @@
               scrape_interval: "15s"
               params:
                 module: [icmp]
-              static_configs: "{{ target_list_icmp.results | map(attribute='ansible_facts.targets_icmp') | list }}"
+              static_configs: "{{ target_list_icmp.results | default('') | map(attribute='ansible_facts.targets_icmp') | list }}"
               relabel_configs:
                 - source_labels: [__address__]
                   target_label: __param_target
