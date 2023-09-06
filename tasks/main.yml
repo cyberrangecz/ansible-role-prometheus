@@ -5,11 +5,29 @@
     name: prometheus-community
     repo_url: https://prometheus-community.github.io/helm-charts
 
-- name: Create a list of targets with node-exporter
+- name: Create a list of targets with node-exporter for all hosts
   set_fact:
-    targets: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
+    targets_os: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
   loop: "{{ hostvars | dict2items }}"
-  register: target_list
+  register: target_list_os_all
+  when: (groups["monitor-os"] is defined) and (groups["monitor-os"]|length == 0)
+
+- name: Create a list of targets with node-exporter for monitor-os group
+  set_fact:
+    targets_os: { targets: ['{{ hostvars[item]["ansible_host"] }}:9100'], labels: { instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}', sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'}}
+  loop: "{{ groups['monitor-os'] }}"
+  register: target_list_os_group
+  when: (groups["monitor-os"] is defined) and (groups["monitor-os"]|length>0)
+
+- name: Set target_list_os_all to target_list_os
+  set_fact:
+    target_list_os: "{{ target_list_os_all }}"
+  when: target_list_os_all.results
+
+- name: Set target_list_os_group to target_list_os
+  set_fact:
+    target_list_os: "{{ target_list_os_group }}"
+  when: target_list_os_group.results
 
 - name: Create a list of targets for icmp monitoring from all hosts
   set_fact:
@@ -53,7 +71,7 @@
           additionalScrapeConfigs:
             - job_name: "sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
               metrics_path: "/metrics"
-              static_configs: "{{ target_list.results | map(attribute='ansible_facts.targets') | list }}"
+              static_configs: "{{ target_list_os.results | map(attribute='ansible_facts.targets_os') | list }}"
             - job_name: "blackbox-icmp-sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
               metrics_path: "/probe"
               scrape_timeout: "15s"
