@@ -53,6 +53,19 @@
     target_list_icmp: "{{ target_list_icmp_group }}"
   when: target_list_icmp_group.results
 
+- name: Parse monitored_hosts group for TCP targets
+  set_fact:
+    monitored_interfaces: "{{ hostvars[item]['targets'] }}"
+  loop: "{{ groups['monitored_hosts'] }}"
+  register: monitored_interfaces_list
+  when: groups['monitored_hosts'] is defined
+
+- name: Create a list of targets for tcp monitoring from monitored_interfaces_list fact
+  set_fact:
+    targets_tcp: { targets: ["{{ hostvars[item[0]['item']]['ansible_facts'][item[1]['interface']].ipv4.address | default(hostvars[item[0]['item']]['ansible_facts'][item[1]['interface']].ipv4[0].address) }}:{{ item[1]['port'] }}"], labels: { instance: '{{ hostvars[item[0]["item"]]["kypo_global_sandbox_name"] }}-{{ hostvars[item[0]["item"]]["inventory_hostname"] }}:{{ item[1]["port"] }}', sandbox: '{{ hostvars[item[0]["item"]]["kypo_global_sandbox_name"] }}'}}
+  loop: "{{ monitored_interfaces_list.results | default({}) | subelements('ansible_facts.monitored_interfaces', skip_missing=True) }}"
+  register: target_list_tcp
+
 - name: Deploy prometheus
   kubernetes.core.helm:
     kubeconfig: /etc/rancher/k3s/k3s.yaml
@@ -79,6 +92,18 @@
               params:
                 module: [icmp]
               static_configs: "{{ target_list_icmp.results | default('') | map(attribute='ansible_facts.targets_icmp') | list }}"
+              relabel_configs:
+                - source_labels: [__address__]
+                  target_label: __param_target
+                - target_label: __address__
+                  replacement: prometheus-blackbox-exporter:9115
+            - job_name: "blackbox-tcp-sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
+              metrics_path: "/probe"
+              scrape_timeout: "15s"
+              scrape_interval: "15s"
+              params:
+                module: [tcp]
+              static_configs: "{{ target_list_tcp.results | default('') | map(attribute='ansible_facts.targets_tcp') | list }}"
               relabel_configs:
                 - source_labels: [__address__]
                   target_label: __param_target
