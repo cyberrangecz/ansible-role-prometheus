@@ -27,7 +27,9 @@
 - name: Set target_list_os_group to target_list_os
   set_fact:
     target_list_os: "{{ target_list_os_group }}"
-  when: target_list_os_group.results
+  when:
+    - target_list_os_group.skipped is not true
+    - target_list_os_group.results
 
 - name: Create a list of targets for icmp monitoring from all hosts
   set_fact:
@@ -51,7 +53,9 @@
 - name: Set target_list_icmp_group to target_list_icmp
   set_fact:
     target_list_icmp: "{{ target_list_icmp_group }}"
-  when: target_list_icmp_group.results
+  when:
+    - target_list_icmp_group.skipped is not true
+    - target_list_icmp_group.results
 
 - name: Parse monitored_hosts group for TCP targets
   set_fact:
