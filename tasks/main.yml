@@ -70,6 +70,41 @@
   loop: "{{ monitored_interfaces_list.results | default({}) | subelements('ansible_facts.monitored_interfaces', skip_missing=True) }}"
   register: target_list_tcp
 
+- name: Create scrapeConfigs
+  set_fact:
+    scrapeConfigs:
+      - job_name: "sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
+        metrics_path: "/metrics"
+        static_configs: "{{ target_list_os.results | map(attribute='ansible_facts.targets_os') | list }}"
+      - job_name: "blackbox-icmp-sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
+        metrics_path: "/probe"
+        scrape_timeout: "15s"
+        scrape_interval: "15s"
+        params:
+          module: [icmp]
+        static_configs: "{{ target_list_icmp.results | default('') | map(attribute='ansible_facts.targets_icmp') | list }}"
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - target_label: __address__
+            replacement: prometheus-blackbox-exporter:9115
+      - job_name: "blackbox-tcp-sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
+        metrics_path: "/probe"
+        scrape_timeout: "15s"
+        scrape_interval: "15s"
+        params:
+          module: [tcp]
+        static_configs: "{{ target_list_tcp.results | default('') | map(attribute='ansible_facts.targets_tcp') | list }}"
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - target_label: __address__
+            replacement: prometheus-blackbox-exporter:9115
+
+- name: Merge scrapeConfigs with customScrapeConfigs
+  set_fact:
+    additionalScrapeConfigs: "{{ scrapeConfigs | community.general.lists_mergeby(customScrapeConfigs, 'job_name') }}"
+
 - name: Deploy prometheus
   kubernetes.core.helm:
     kubeconfig: /etc/rancher/k3s/k3s.yaml
@@ -85,34 +120,8 @@
         service:
           type: LoadBalancer
         prometheusSpec:
-          additionalScrapeConfigs:
-            - job_name: "sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
-              metrics_path: "/metrics"
-              static_configs: "{{ target_list_os.results | map(attribute='ansible_facts.targets_os') | list }}"
-            - job_name: "blackbox-icmp-sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
-              metrics_path: "/probe"
-              scrape_timeout: "15s"
-              scrape_interval: "15s"
-              params:
-                module: [icmp]
-              static_configs: "{{ target_list_icmp.results | default('') | map(attribute='ansible_facts.targets_icmp') | list }}"
-              relabel_configs:
-                - source_labels: [__address__]
-                  target_label: __param_target
-                - target_label: __address__
-                  replacement: prometheus-blackbox-exporter:9115
-            - job_name: "blackbox-tcp-sandbox-{{ kypo_global_sandbox_allocation_unit_id }}"
-              metrics_path: "/probe"
-              scrape_timeout: "15s"
-              scrape_interval: "15s"
-              params:
-                module: [tcp]
-              static_configs: "{{ target_list_tcp.results | default('') | map(attribute='ansible_facts.targets_tcp') | list }}"
-              relabel_configs:
-                - source_labels: [__address__]
-                  target_label: __param_target
-                - target_label: __address__
-                  replacement: prometheus-blackbox-exporter:9115
+          additionalScrapeConfigs: "{{ additionalScrapeConfigs }}"
+
   register: result
   retries: 5
   delay: 10
