@@ -8,11 +8,11 @@
 - name: Create a list of targets with node-exporter for all hosts
   set_fact:
     targets_os: 
-      targets: ['{{ item.value.ansible_host }}:9100']
-      labels: 
-        instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}'
-        sandbox: '{{ item.value.kypo_global_sandbox_name }}'
-  loop: "{{ hostvars | dict2items }}"
+      targets: ['{{ hostvars[item]["ansible_host"] }}:9100']
+      labels:
+        instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}'
+        sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'
+  loop: "{{ groups['all'] }}"
   register: target_list_os_all
   when: (groups["monitor-os"] is defined) and (groups["monitor-os"]|length == 0)
 
@@ -42,11 +42,11 @@
 - name: Create a list of targets for icmp monitoring from all hosts
   set_fact:
     targets_icmp:
-      targets: ['{{ item.value.ansible_host }}']
+      targets: ['{{ hostvars[item]["ansible_host"] }}']
       labels:
-        instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}'
-        sandbox: '{{ item.value.kypo_global_sandbox_name }}'
-  loop: "{{ hostvars | dict2items }}"
+        instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}'
+        sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'
+  loop: "{{ groups['all'] }}"
   register: target_list_icmp_all
   when: (groups["monitor-icmp"] is defined) and (groups["monitor-icmp"]|length == 0)
 
