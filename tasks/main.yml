@@ -5,57 +5,25 @@
     name: prometheus-community
     repo_url: https://prometheus-community.github.io/helm-charts
 
-- name: Create a list of targets with node-exporter for all hosts
+- name: Create a list of targets with node-exporter
   set_fact:
-    targets_os: { targets: ['{{ item.value.ansible_host }}:9100'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
-  loop: "{{ hostvars | dict2items }}"
-  register: target_list_os_all
-  when: (groups["monitor-os"] is defined) and (groups["monitor-os"]|length == 0)
+    targets_os: 
+      targets: ['{{ hostvars[item]["ansible_host"] }}:9100']
+      labels:
+        instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}'
+        sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'
+  loop: "{{ [] if groups['monitor-os'] is undefined else groups['monitor-os'] if groups['monitor-os']|length > 0 else groups['all'] }}"
+  register: target_list_os
 
-- name: Create a list of targets with node-exporter for monitor-os group
+- name: Create a list of targets for icmp monitoring
   set_fact:
-    targets_os: { targets: ['{{ hostvars[item]["ansible_host"] }}:9100'], labels: { instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}', sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'}}
-  loop: "{{ groups['monitor-os'] }}"
-  register: target_list_os_group
-  when: (groups["monitor-os"] is defined) and (groups["monitor-os"]|length>0)
-
-- name: Set target_list_os_all to target_list_os
-  set_fact:
-    target_list_os: "{{ target_list_os_all }}"
-  when: target_list_os_all.results
-
-- name: Set target_list_os_group to target_list_os
-  set_fact:
-    target_list_os: "{{ target_list_os_group }}"
-  when:
-    - target_list_os_group.skipped is not true
-    - target_list_os_group.results
-
-- name: Create a list of targets for icmp monitoring from all hosts
-  set_fact:
-    targets_icmp: { targets: ['{{ item.value.ansible_host }}'], labels: { instance: '{{ item.value.kypo_global_sandbox_name }}-{{ item.value.inventory_hostname }}', sandbox: '{{ item.value.kypo_global_sandbox_name }}'}}
-  loop: "{{ hostvars | dict2items }}"
-  register: target_list_icmp_all
-  when: (groups["monitor-icmp"] is defined) and (groups["monitor-icmp"]|length == 0)
-
-- name: Create a list of targets for icmp monitoring from monitor-icmp group
-  set_fact:
-    targets_icmp: { targets: ['{{ hostvars[item]["ansible_host"] }}'], labels: { instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}', sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'}}
-  loop: "{{ groups['monitor-icmp'] }}"
-  register: target_list_icmp_group
-  when: (groups["monitor-icmp"] is defined) and (groups["monitor-icmp"]|length>0)
-
-- name: Set target_list_icmp_all to target_list_icmp
-  set_fact:
-    target_list_icmp: "{{ target_list_icmp_all }}"
-  when: target_list_icmp_all.results
-
-- name: Set target_list_icmp_group to target_list_icmp
-  set_fact:
-    target_list_icmp: "{{ target_list_icmp_group }}"
-  when:
-    - target_list_icmp_group.skipped is not true
-    - target_list_icmp_group.results
+    targets_icmp:
+      targets: ['{{ hostvars[item]["ansible_host"] }}']
+      labels:
+        instance: '{{ hostvars[item]["kypo_global_sandbox_name"] }}-{{ hostvars[item]["inventory_hostname"] }}'
+        sandbox: '{{ hostvars[item]["kypo_global_sandbox_name"] }}'
+  loop: "{{ [] if groups['monitor-icmp'] is undefined else groups['monitor-icmp'] if groups['monitor-icmp']|length>0 else groups['all'] }}"
+  register: target_list_icmp
 
 - name: Parse monitored_hosts group for TCP targets
   set_fact:
@@ -66,7 +34,11 @@
 
 - name: Create a list of targets for tcp monitoring from monitored_interfaces_list fact
   set_fact:
-    targets_tcp: { targets: ["{{ hostvars[item[0]['item']]['ansible_facts'][item[1]['interface']].ipv4.address | default(hostvars[item[0]['item']]['ansible_facts'][item[1]['interface']].ipv4[0].address) }}:{{ item[1]['port'] }}"], labels: { instance: '{{ hostvars[item[0]["item"]]["kypo_global_sandbox_name"] }}-{{ hostvars[item[0]["item"]]["inventory_hostname"] }}:{{ item[1]["port"] }}', sandbox: '{{ hostvars[item[0]["item"]]["kypo_global_sandbox_name"] }}'}}
+    targets_tcp:
+      targets: ["{{ hostvars[item[0]['item']]['ansible_facts'][item[1]['interface']].ipv4.address | default(hostvars[item[0]['item']]['ansible_facts'][item[1]['interface']].ipv4[0].address) }}:{{ item[1]['port'] }}"]
+      labels:
+        instance: '{{ hostvars[item[0]["item"]]["kypo_global_sandbox_name"] }}-{{ hostvars[item[0]["item"]]["inventory_hostname"] }}:{{ item[1]["port"] }}'
+        sandbox: '{{ hostvars[item[0]["item"]]["kypo_global_sandbox_name"] }}'
   loop: "{{ monitored_interfaces_list.results | default({}) | subelements('ansible_facts.monitored_interfaces', skip_missing=True) }}"
   register: target_list_tcp
 
