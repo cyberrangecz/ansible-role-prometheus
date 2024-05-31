@@ -1,4 +1,5 @@
 ---
 
-customOsRelabelConfigs: []
+custom_os_metric_relabel_configs: []
+custom_os_relabel_configs: []
 customScrapeConfigs: []
