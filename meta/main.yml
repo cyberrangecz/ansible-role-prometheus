@@ -5,5 +5,5 @@ galaxy_info:
   company: Masaryk university
   galaxy_tags: []
 dependencies:
-  - src: git@gitlab.ics.muni.cz:cerit-public/ansible-roles/k3s.git
+  - src: https://gitlab.ics.muni.cz/cerit-public/ansible-roles/k3s.git
     scm: git
