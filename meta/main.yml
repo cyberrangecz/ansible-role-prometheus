@@ -2,8 +2,10 @@ galaxy_info:
   role_name: prometheus
   author: Tomas Sapak (139890@muni.cz)
   description: Role for setting up node-exporter
-  company: Masaryk university
+  company: Masaryk university and CyberSecurity Hub
   galaxy_tags: []
 dependencies:
-  - src: https://gitlab.ics.muni.cz/cerit-public/ansible-roles/k3s.git
+  - name: k3s
+    src: https://github.com/cyberrangecz/ansible-role-k3s.git
     scm: git
+    version: v1.0.0
