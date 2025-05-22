@@ -84,6 +84,7 @@
     kubeconfig: /etc/rancher/k3s/k3s.yaml
     name: prometheus
     chart_ref: prometheus-community/kube-prometheus-stack
+    chart_version: 72.5.2
     release_namespace: prometheus
     wait: True
     atomic: True
@@ -98,6 +99,7 @@
         service:
           type: LoadBalancer
         prometheusSpec:
+          maximumStartupDurationSeconds: 600
           additionalScrapeConfigs: "{{ additionalScrapeConfigs }}"
 
   register: result
