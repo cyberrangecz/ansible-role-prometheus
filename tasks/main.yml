@@ -47,7 +47,7 @@
 - name: Create a list of targets for icmp monitoring
   set_fact:
     targets_icmp: |
-      {% for item in monitored_hosts_icmp_list | from_yaml | subelements('targets', skip_missing=True) %}
+      {% for item in monitored_hosts_icmp_list | from_yaml | default([],true) | subelements('targets', skip_missing=True) %}
       {% set target = hostvars[item.0.host].ansible_facts[item.1.interface].ipv4.address | default(hostvars[item.0.host].ansible_facts[item.1.interface].ipv4.0.address)
         if item.1.interface is defined else
         item.0.interfaces | selectattr('ipv4.address', 'ansible.utils.in_network', item.1.address) | map(attribute='ipv4.address') | first
@@ -73,7 +73,7 @@
 - name: Create a list of targets for tcp monitoring
   set_fact:
     targets_tcp: |
-      {% for item in monitored_hosts_tcp_list | from_yaml | subelements('targets', skip_missing=True) %}
+      {% for item in monitored_hosts_tcp_list | from_yaml | default([],true) | subelements('targets', skip_missing=True) %}
       {% set target = hostvars[item.0.host].ansible_facts[item.1.interface].ipv4.address | default(hostvars[item.0.host].ansible_facts[item.1.interface].ipv4.0.address)
         if item.1.interface is defined else
         item.0.interfaces | selectattr('ipv4.address', 'ansible.utils.in_network', item.1.address) | map(attribute='ipv4.address') | first
